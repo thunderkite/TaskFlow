@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% set active_tab = 'notifications' %}
+
+{% block title %}Уведомления{% endblock %}
+{% block page_title %}Уведомления{% endblock %}
+{% block page_subtitle %}Все системные уведомления{% endblock %}
+
+{% block header_actions %}
+  {% set unread_count = notifications | selectattr('is_read', 'equalto', false) | list | length %}
+  {% if unread_count > 0 %}
+  <form method="POST" action="{{ url_for('notifications.mark_all_as_read') }}">
+    <button type="submit" class="btn-secondary">Прочитать все ({{ unread_count }})</button>
+  </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="notif-page-list">
+  {% for n in notifications %}
+  <div class="notif-page-item {% if not n.is_read %}unread{% endif %}">
+    <div class="notif-icon ni-{{ n.icon_type }}">
+      {% if n.icon_type == 'success' %}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      {% elif n.icon_type == 'warning' %}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      {% elif n.icon_type == 'danger' %}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      {% else %}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      {% endif %}
+    </div>
+    <div class="notif-body">
+      <div class="notif-text">{{ n.text }}</div>
+      <div class="notif-time">{{ n.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+    </div>
+    <div class="notif-actions">
+      {% if n.link %}
+      <a href="{{ n.link }}" class="btn-secondary" style="padding:5px 10px;font-size:12px">Открыть</a>
+      {% endif %}
+      {% if not n.is_read %}
+      <form method="POST" action="{{ url_for('notifications.mark_read', notif_id=n.id) }}" style="display:inline">
+        <button type="submit" class="btn-secondary" style="padding:5px 10px;font-size:12px">✓</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="table-empty" style="padding:64px;text-align:center;background:#fff;border-radius:16px;border:1px solid var(--slate-200)">
+    Уведомлений нет
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

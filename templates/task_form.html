@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% set active_tab = 'tasks' %}
+
+{% block title %}{% if task %}Редактировать задачу{% else %}Новая задача{% endif %}{% endblock %}
+{% block page_title %}{% if task %}Редактирование задачи{% else %}Создание задачи{% endif %}{% endblock %}
+{% block page_subtitle %}{% if task %}Изменение параметров задачи #{{ task.id }}{% else %}Заполните данные новой задачи{% endif %}{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('tasks.task_list') }}" class="btn-secondary">← Назад</a>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+  <form method="POST" action="{% if task %}{{ url_for('tasks.task_edit', task_id=task.id) }}{% else %}{{ url_for('tasks.task_new') }}{% endif %}">
+
+    <div class="form-row">
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Название <span class="required">*</span></label>
+        <input type="text" name="title" class="form-input" required
+               value="{{ task.title if task else '' }}"
+               placeholder="Краткое название задачи" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Описание</label>
+      <textarea name="description" class="form-input form-textarea" placeholder="Подробное описание задачи, требования, примечания…" rows="5">{{ task.description if task and task.description else '' }}</textarea>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Исполнитель</label>
+        <select name="assignee_id" class="form-input form-select">
+          <option value="">— Не назначен —</option>
+          {% for emp in employees %}
+          <option value="{{ emp.id }}" {% if task and task.assignee_id == emp.id %}selected{% endif %}>
+            {{ emp.full_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Приоритет</label>
+        <select name="priority" class="form-input form-select">
+          {% for val, lbl in [('low','Низкий'),('medium','Средний'),('high','Высокий'),('critical','Критический')] %}
+          <option value="{{ val }}" {% if task and task.priority == val or not task and val == 'medium' %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Дедлайн</label>
+        <input type="datetime-local" name="deadline" class="form-input"
+               value="{{ task.deadline.strftime('%Y-%m-%dT%H:%M') if task and task.deadline else '' }}" />
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">
+        {% if task %}Сохранить изменения{% else %}Создать задачу{% endif %}
+      </button>
+      <a href="{{ url_for('tasks.task_list') }}" class="btn-secondary">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

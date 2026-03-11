@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% set active_tab = 'dashboard' %}
+
+{% block title %}Дашборд{% endblock %}
+{% block page_title %}Управление проектом{% endblock %}
+{% block page_subtitle %}Визуализация рабочего процесса команды{% endblock %}
+
+{% block header_actions %}
+  {% if current_user.is_manager %}
+  <a href="{{ url_for('tasks.task_new') }}" class="btn-primary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Новая задача
+  </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-toolbar" id="dashboard-toolbar">
+  <div class="dashboard-toolbar-form">
+    <button class="btn-secondary dashboard-trigger" type="button" id="btn-dashboard-filters">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      Фильтры
+    </button>
+
+    <button class="btn-secondary dashboard-trigger" type="button" id="btn-dashboard-grouping">
+      Группировка: {{ 'Статус' if group == 'status' else 'Приоритет' if group == 'priority' else 'Исполнитель' }}
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+
+    <div class="dashboard-popover" id="dashboard-filters-popover">
+      <div class="dashboard-popover-title">Фильтры дашборда</div>
+
+      <form method="GET" action="{{ url_for('tasks.dashboard') }}" class="dash-popover-section">
+        <input type="hidden" name="group" value="{{ group }}" />
+        <input type="hidden" name="priority" value="{{ priority_filter }}" />
+        <input type="hidden" name="assignee_id" value="{{ assignee_filter }}" />
+        <div class="dash-popover-label">Статус</div>
+        <div class="dash-chip-row">
+          <button type="submit" name="status" value="new" class="dash-chip {% if status_filter == 'new' %}active{% endif %}">К выполнению</button>
+          <button type="submit" name="status" value="in_progress" class="dash-chip {% if status_filter == 'in_progress' %}active{% endif %}">В работе</button>
+          <button type="submit" name="status" value="done" class="dash-chip {% if status_filter == 'done' %}active{% endif %}">Готово</button>
+          <button type="submit" name="status" value="overdue" class="dash-chip {% if status_filter == 'overdue' %}active{% endif %}">Просрочено</button>
+        </div>
+      </form>
+
+      <form method="GET" action="{{ url_for('tasks.dashboard') }}" class="dash-popover-section">
+        <input type="hidden" name="group" value="{{ group }}" />
+        <input type="hidden" name="status" value="{{ status_filter }}" />
+        <input type="hidden" name="assignee_id" value="{{ assignee_filter }}" />
+        <div class="dash-popover-label">Приоритет</div>
+        <div class="dash-chip-row">
+          <button type="submit" name="priority" value="critical" class="dash-chip {% if priority_filter == 'critical' %}active{% endif %}">Критический</button>
+          <button type="submit" name="priority" value="high" class="dash-chip {% if priority_filter == 'high' %}active{% endif %}">Высокий</button>
+          <button type="submit" name="priority" value="medium" class="dash-chip {% if priority_filter == 'medium' %}active{% endif %}">Средний</button>
+          <button type="submit" name="priority" value="low" class="dash-chip {% if priority_filter == 'low' %}active{% endif %}">Низкий</button>
+        </div>
+      </form>
+
+      {% if current_user.is_manager %}
+      <form method="GET" action="{{ url_for('tasks.dashboard') }}" class="dash-popover-section">
+        <input type="hidden" name="group" value="{{ group }}" />
+        <input type="hidden" name="status" value="{{ status_filter }}" />
+        <input type="hidden" name="priority" value="{{ priority_filter }}" />
+        <div class="dash-popover-label">Исполнитель</div>
+        <select class="dash-select" name="assignee_id" onchange="this.form.submit()">
+          <option value="" {% if not assignee_filter %}selected{% endif %}>Все</option>
+          {% for employee in employees %}
+          <option value="{{ employee.id }}" {% if assignee_filter == (employee.id|string) %}selected{% endif %}>{{ employee.full_name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% endif %}
+
+      <div class="dash-popover-actions">
+        <a class="dash-link-btn" href="{{ url_for('tasks.dashboard', group=group) }}">Сбросить фильтры</a>
+      </div>
+    </div>
+
+    <div class="dashboard-popover" id="dashboard-grouping-popover">
+      <div class="dashboard-popover-title">Группировка карточек</div>
+      <form method="GET" action="{{ url_for('tasks.dashboard') }}" class="dash-chip-row">
+        <input type="hidden" name="status" value="{{ status_filter }}" />
+        <input type="hidden" name="priority" value="{{ priority_filter }}" />
+        <input type="hidden" name="assignee_id" value="{{ assignee_filter }}" />
+        <button type="submit" name="group" value="status" class="dash-chip {% if group == 'status' %}active{% endif %}">По статусу</button>
+        <button type="submit" name="group" value="priority" class="dash-chip {% if group == 'priority' %}active{% endif %}">По приоритету</button>
+        {% if current_user.is_manager %}
+        <button type="submit" name="group" value="assignee" class="dash-chip {% if group == 'assignee' %}active{% endif %}">По исполнителю</button>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="kanban-board" data-dashboard-group="{{ group }}">
+  {% for column in board_columns %}
+    <div class="kanban-column {{ column.col_class }}">
+      <div class="kanban-col-header">
+        <div class="kanban-col-title-wrap">
+          <span class="kanban-col-title">{{ column.label }}</span>
+          <span class="kanban-col-count">{{ column.tasks | length }}</span>
+        </div>
+      </div>
+      <div class="kanban-cards {% if group == 'status' %}kanban-dropzone{% endif %}" {% if group == 'status' %}data-status="{{ column.key }}"{% endif %}>
+        {% for task in column.tasks %}
+        <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" class="task-card{% if group == 'status' %} task-card-draggable{% endif %}" {% if group == 'status' %}draggable="true" data-task-id="{{ task.id }}" data-task-status="{{ task.effective_status }}"{% endif %}>
+          <div class="task-card-top">
+            <span class="task-id">TASK-{{ task.id }}</span>
+            <span class="badge badge-{{ task.priority }}">{{ task.priority_label }}</span>
+          </div>
+          <div class="task-title">{{ task.title }}</div>
+          {% if task.description %}
+          <div class="task-desc">{{ task.description }}</div>
+          {% endif %}
+          <div class="task-card-footer">
+            <div class="task-card-left">
+              {% if task.assignee %}
+              <div class="task-assignee-circle" title="{{ task.assignee.full_name }}">{{ task.assignee.full_name[0] }}</div>
+              <span class="task-assignee-name">{{ task.assignee.full_name.split()[0] }}</span>
+              {% else %}
+              <span style="font-size:11px;color:var(--slate-400)">Не назначено</span>
+              {% endif %}
+            </div>
+            {% if task.deadline %}
+            <div class="task-due {% if task.is_overdue %}deadline-warn{% endif %}">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              {{ task.deadline.strftime('%d.%m.%y') }}
+            </div>
+            {% endif %}
+          </div>
+        </a>
+        {% else %}
+        <div class="kanban-empty">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <p>Нет задач</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

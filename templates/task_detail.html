@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% set active_tab = 'tasks' %}
+
+{% block title %}{{ task.title }}{% endblock %}
+{% block page_title %}Карточка задачи{% endblock %}
+{% block page_subtitle %}Детали и история изменений{% endblock %}
+
+{% block header_actions %}
+  {% if current_user.is_manager %}
+  <a href="{{ url_for('tasks.task_edit', task_id=task.id) }}" class="btn-secondary">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Редактировать
+  </a>
+  {% endif %}
+  <a href="{{ url_for('tasks.task_list') }}" class="btn-secondary">← Назад к списку</a>
+{% endblock %}
+
+{% block content %}
+<div class="detail-layout">
+  <!-- Left: main info -->
+  <div class="detail-main">
+    <div class="detail-card">
+      <div class="detail-id">#{{ task.id }} · Создана {{ task.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+      <h2 class="detail-title">{{ task.title }}</h2>
+      {% if task.description %}
+      <p class="detail-desc">{{ task.description }}</p>
+      {% else %}
+      <p class="detail-desc" style="color:var(--slate-300)">Описание не указано</p>
+      {% endif %}
+
+      <div class="detail-grid">
+        <div>
+          <div class="detail-field-label">Статус</div>
+          <div class="detail-field-value">
+            <span class="status-badge status-{{ task.effective_status }}">{{ task.status_label }}</span>
+          </div>
+        </div>
+        <div>
+          <div class="detail-field-label">Приоритет</div>
+          <div class="detail-field-value">
+            <span class="badge badge-{{ task.priority }}">{{ task.priority_label }}</span>
+          </div>
+        </div>
+        <div>
+          <div class="detail-field-label">Исполнитель</div>
+          <div class="detail-field-value">
+            {% if task.assignee %}
+            <div class="task-assignee-circle">{{ task.assignee.full_name[0] }}</div>
+            {{ task.assignee.full_name }}
+            {% else %}
+            <span style="color:var(--slate-400)">Не назначен</span>
+            {% endif %}
+          </div>
+        </div>
+        <div>
+          <div class="detail-field-label">Автор</div>
+          <div class="detail-field-value">
+            <div class="task-assignee-circle">{{ task.author.full_name[0] }}</div>
+            {{ task.author.full_name }}
+          </div>
+        </div>
+        <div>
+          <div class="detail-field-label">Дата создания</div>
+          <div class="detail-field-value">{{ task.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+        </div>
+        <div>
+          <div class="detail-field-label">Дедлайн</div>
+          <div class="detail-field-value {% if task.is_overdue %}deadline-warn{% endif %}">
+            {% if task.deadline %}
+            {{ task.deadline.strftime('%d.%m.%Y %H:%M') }}
+            {% if task.is_overdue %}<span style="font-size:11px;margin-left:4px">(просрочено)</span>{% endif %}
+            {% else %}
+            <span style="color:var(--slate-400)">Не указан</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change status -->
+    <div class="detail-card">
+      <h3 class="section-title" style="margin-bottom:16px">Изменить статус</h3>
+      <form method="POST" action="{{ url_for('tasks.task_update_status', task_id=task.id) }}" class="status-form">
+        <div class="status-options">
+          {% for val, lbl in [('new','Новая'),('in_progress','В работе'),('done','Готово'),('overdue','Просрочено')] %}
+          <label class="status-option {% if task.status == val %}selected{% endif %}">
+            <input type="radio" name="status" value="{{ val }}" {% if task.status == val %}checked{% endif %} />
+            <span class="status-badge status-{{ val }}">{{ lbl }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <div class="form-group" style="margin-top:12px">
+          <input type="text" name="comment" class="form-input" placeholder="Комментарий к изменению (необязательно)" />
+        </div>
+        <button type="submit" class="btn-primary">Сохранить статус</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right: history -->
+  <div class="detail-side">
+    <div class="detail-card">
+      <h3 class="section-title" style="margin-bottom:16px">История изменений</h3>
+      <div class="history-list">
+        {% for entry in history %}
+        <div class="history-item">
+          <div class="history-dot"></div>
+          <div class="history-body">
+            <div class="history-text">
+              {% if entry.old_status %}
+              <span class="status-badge status-{{ entry.old_status }} sm">{{ entry.task.STATUS_LABELS.get(entry.old_status, entry.old_status) }}</span>
+              →
+              <span class="status-badge status-{{ entry.new_status }} sm">{{ entry.task.STATUS_LABELS.get(entry.new_status, entry.new_status) }}</span>
+              {% else %}
+              <strong>Задача создана</strong>
+              {% endif %}
+              {% if entry.comment %} · {{ entry.comment }}{% endif %}
+            </div>
+            <div class="history-time">
+              {{ entry.changed_at.strftime('%d.%m.%Y %H:%M') }}
+              {% if entry.user %} · {{ entry.user.full_name }}{% endif %}
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div style="color:var(--slate-400);font-size:13px">Нет записей</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

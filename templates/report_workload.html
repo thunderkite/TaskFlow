@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% set active_tab = 'reports' %}
+
+{% block title %}Загруженность сотрудников{% endblock %}
+{% block page_title %}Загруженность сотрудников{% endblock %}
+{% block page_subtitle %}Статистика задач по исполнителям{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('reports.reports') }}" class="btn-secondary">← К отчётам</a>
+{% endblock %}
+
+{% block content %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Сотрудник</th>
+        <th>Всего задач</th>
+        <th style="color:var(--slate-400)">Новые</th>
+        <th style="color:var(--indigo-500)">В работе</th>
+        <th style="color:var(--emerald-600)">Готово</th>
+        <th style="color:var(--rose-600)">Просрочено</th>
+        <th>Загрузка</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in data %}
+      {% set emp = row.user %}
+      {% set c = row.counts %}
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="task-assignee-circle">{{ emp.full_name[0] }}</div>
+            <div>
+              <div style="font-weight:600;font-size:14px">{{ emp.full_name }}</div>
+              <div style="font-size:11px;color:var(--slate-400)">{{ emp.email or emp.username }}</div>
+            </div>
+          </div>
+        </td>
+        <td><strong>{{ c.total }}</strong></td>
+        <td>{{ c.new }}</td>
+        <td>{{ c.in_progress }}</td>
+        <td>{{ c.done }}</td>
+        <td>{{ c.overdue }}</td>
+        <td>
+          {% set pct = [100, (c.total / 8 * 100)|int]|min if c.total > 0 else 0 %}
+          <div style="width:120px">
+            <div style="width:120px;height:6px;background:var(--slate-200);border-radius:999px;overflow:hidden">
+              <div style="width:{{ pct }}%;height:100%;background:var(--indigo-500);border-radius:999px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--slate-400);margin-top:3px">{{ c.total }} задач</div>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="table-empty">Нет сотрудников в системе</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

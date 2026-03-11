@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% set active_tab = 'tasks' %}
+
+{% block title %}Задачи{% endblock %}
+{% block page_title %}Все задачи{% endblock %}
+{% block page_subtitle %}Список задач с фильтрацией и поиском{% endblock %}
+
+{% block header_actions %}
+  {% if current_user.is_manager %}
+  <a href="{{ url_for('tasks.task_new') }}" class="btn-primary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Новая задача
+  </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- Filter bar -->
+<form method="GET" action="{{ url_for('tasks.task_list') }}" class="tasks-filter-bar">
+  <div class="search-wrap-inline">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" name="q" value="{{ q }}" placeholder="Поиск по названию или описанию…" class="filter-search-input" />
+  </div>
+
+  <div class="filter-divider"></div>
+
+  <div class="filter-select-wrap">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">Все статусы</option>
+      <option value="new" {% if status=='new' %}selected{% endif %}>Новая</option>
+      <option value="in_progress" {% if status=='in_progress' %}selected{% endif %}>В работе</option>
+      <option value="done" {% if status=='done' %}selected{% endif %}>Готово</option>
+      <option value="overdue" {% if status=='overdue' %}selected{% endif %}>Просрочено</option>
+    </select>
+  </div>
+
+  <div class="filter-select-wrap">
+    <select name="priority" onchange="this.form.submit()">
+      <option value="">Все приоритеты</option>
+      <option value="low" {% if priority=='low' %}selected{% endif %}>Низкий</option>
+      <option value="medium" {% if priority=='medium' %}selected{% endif %}>Средний</option>
+      <option value="high" {% if priority=='high' %}selected{% endif %}>Высокий</option>
+      <option value="critical" {% if priority=='critical' %}selected{% endif %}>Критический</option>
+    </select>
+  </div>
+
+  {% if current_user.is_manager and employees %}
+  <div class="filter-select-wrap">
+    <select name="assignee_id" onchange="this.form.submit()">
+      <option value="">Все исполнители</option>
+      {% for emp in employees %}
+      <option value="{{ emp.id }}" {% if assignee_id == emp.id|string %}selected{% endif %}>{{ emp.full_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <button type="submit" class="btn-secondary">Найти</button>
+  {% if q or status or priority or assignee_id %}
+  <a href="{{ url_for('tasks.task_list') }}" class="btn-secondary">Сбросить</a>
+  {% endif %}
+
+  <span class="tasks-count">{{ tasks | length }} задач</span>
+</form>
+
+<!-- Tasks table -->
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Задача</th>
+        <th>Исполнитель</th>
+        <th>Статус</th>
+        <th>Приоритет</th>
+        <th>Дедлайн</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for task in tasks %}
+      <tr>
+        <td class="td-id">#{{ task.id }}</td>
+        <td>
+          <div class="td-title">{{ task.title }}</div>
+          {% if task.description %}
+          <div class="td-desc">{{ task.description[:80] }}{% if task.description|length > 80 %}…{% endif %}</div>
+          {% endif %}
+        </td>
+        <td>
+          {% if task.assignee %}
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="task-assignee-circle sm">{{ task.assignee.full_name[0] }}</div>
+            <span style="font-size:13px">{{ task.assignee.full_name }}</span>
+          </div>
+          {% else %}
+          <span style="font-size:12px;color:var(--slate-400)">—</span>
+          {% endif %}
+        </td>
+        <td class="td-status td-{{ task.effective_status }}"><span>{{ task.status_label }}</span></td>
+        <td><span class="badge badge-{{ task.priority }}">{{ task.priority_label }}</span></td>
+        <td class="td-due {% if task.is_overdue %}deadline-warn{% endif %}">
+          {{ task.deadline.strftime('%d.%m.%Y') if task.deadline else '—' }}
+        </td>
+        <td class="td-more">
+          <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" class="btn-icon" title="Открыть">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </a>
+          {% if current_user.is_manager %}
+          <a href="{{ url_for('tasks.task_edit', task_id=task.id) }}" class="btn-icon" title="Редактировать">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </a>
+          <form method="POST" action="{{ url_for('tasks.task_delete', task_id=task.id) }}" style="display:inline" onsubmit="return confirm('Удалить задачу?')">
+            <button type="submit" class="btn-icon btn-icon-danger" title="Удалить">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+            </button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="table-empty">Задачи не найдены</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

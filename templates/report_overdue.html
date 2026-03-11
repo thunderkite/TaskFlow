@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% set active_tab = 'reports' %}
+
+{% block title %}Просроченные задачи{% endblock %}
+{% block page_title %}Просроченные задачи{% endblock %}
+{% block page_subtitle %}Задачи с истёкшим сроком исполнения{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('reports.reports') }}" class="btn-secondary">← К отчётам</a>
+{% endblock %}
+
+{% block content %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Задача</th>
+        <th>Исполнитель</th>
+        <th>Приоритет</th>
+        <th>Дедлайн</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for task in tasks %}
+      <tr>
+        <td class="td-id">#{{ task.id }}</td>
+        <td>
+          <div class="td-title">{{ task.title }}</div>
+          {% if task.description %}
+          <div class="td-desc">{{ task.description[:60] }}…</div>
+          {% endif %}
+        </td>
+        <td>
+          {% if task.assignee %}
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="task-assignee-circle sm">{{ task.assignee.full_name[0] }}</div>
+            {{ task.assignee.full_name }}
+          </div>
+          {% else %}—{% endif %}
+        </td>
+        <td><span class="badge badge-{{ task.priority }}">{{ task.priority_label }}</span></td>
+        <td class="deadline-warn">{{ task.deadline.strftime('%d.%m.%Y') if task.deadline else '—' }}</td>
+        <td><a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" class="btn-secondary" style="padding:6px 12px;font-size:12px">Открыть</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="table-empty">Нет просроченных задач 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

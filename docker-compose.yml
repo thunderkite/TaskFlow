@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: taskflow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: taskflow
+      POSTGRES_PASSWORD: taskflow
+      POSTGRES_DB: taskflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: taskflow-web
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: 5ecr3t_k3y_f0r_t4skfl0w
+      DATABASE_URL: postgresql+psycopg://taskflow:taskflow@db:5432/taskflow # имя пользователя, пароль, адрес контейнера с базой (db), порт и имя базы.
+      FLASK_ENV: production
+      PORT: 5000
+      FLASK_RUN_HOST: 0.0.0.0
+      FLASK_DEBUG: 0
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
