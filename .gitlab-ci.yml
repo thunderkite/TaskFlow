@@ -1,0 +1,52 @@
+stages:
+  - build
+  - test
+  - publish
+  - deploy
+
+variables:
+  DOCKER_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+  DOCKER_IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
+
+build:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  script:
+    - docker build -t $DOCKER_IMAGE_NAME .
+    - docker tag $DOCKER_IMAGE_NAME $DOCKER_IMAGE_LATEST
+
+test:
+  stage: test
+  image: python:3.9-slim
+  script:
+    - pip install -r requirements.txt
+    - pip install pytest
+
+publish:
+  stage: publish
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $DOCKER_IMAGE_NAME .
+    - docker tag $DOCKER_IMAGE_NAME $DOCKER_IMAGE_LATEST
+    - docker push $DOCKER_IMAGE_NAME
+    - docker push $DOCKER_IMAGE_LATEST
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl config use-context your-gitlab-agent-context
+    - sed -i "s|IMAGE_PLACEHOLDER|$DOCKER_IMAGE_NAME|g" k8s/deployment.yaml
+    - kubectl apply -f k8s/
+  environment:
+    name: production
+  only:
+    - main
