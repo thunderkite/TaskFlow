@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: taskflow-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  rules:
+  - host: taskflow.example.com
+    http:
+      paths:
+      - path: /\
+        pathType: Prefix
+        backend:
+          service:
+            name: taskflow-service
+            port:
+              number: 80
